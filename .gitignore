@@ -1,0 +1,15 @@
+node_modules/
+dist/
+
+.env
+
+.vscode/
+.idea/
+
+.DS_Store
+
+
+public
+
+src/frontend/
+src/database.sqlite
