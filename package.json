@@ -13,6 +13,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express-rate-limit": "^8.0.1",
+    "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.4",
     "multer": "^2.0.2",

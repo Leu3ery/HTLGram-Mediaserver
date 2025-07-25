@@ -29,6 +29,10 @@ app.use(express.json())
 app.use('/public', express.static(publicDir))
 
 
+import mediaRouter from './modules/media/media.routes'
+
+app.use('/media', mediaRouter)
+
 
 app.use(errorHandler)
 app.use(notFound)
