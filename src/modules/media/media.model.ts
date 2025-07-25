@@ -55,7 +55,7 @@ const CommunicationSchema = new Schema<CommunicationI, CommunicationModelI>(
       default: false,
       index: true,
     },
-    expiresAt: { type: Date, index: true },
+    expiresAt: { type: Date },
     editedAt:  { type: Date },
   },
   {
