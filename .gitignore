@@ -13,3 +13,5 @@ public
 
 src/frontend/
 src/database.sqlite
+
+jwtRS256.key.pub
