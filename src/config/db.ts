@@ -1,24 +1,50 @@
 import mongoose from 'mongoose'
 import {config} from './config'
-import { CommunicationModel } from '../modules/media/media.model';
+import { CommunicationModel, PayloadModel } from '../modules/media/media.model';
+import deleteFile from '../common/utils/utils.deleteFile';
 
 //chat gpt
 let cleanupTimer: NodeJS.Timeout
 
 async function startCleanupLoop() {
+  let deletedMedias = 0
+  let deletedComm   = 0
+
   try {
     const now = new Date()
-    const { deletedCount } = await CommunicationModel.deleteMany({
+    const communications = await CommunicationModel.find({
       expiresAt:  { $lte: now },
       isConfirmed: false
-    })
-    console.log(`[${now.toISOString()}] Deleted ${deletedCount} expired communications`)
+    }).exec()
+
+    for (const comm of communications) {
+      const medias = await PayloadModel.find({ communicationId: comm._id }).exec()
+
+      for (const media of medias) {
+        try {
+          deleteFile(media.path)
+        } catch (fsErr) {
+          console.error('File delete error:', fsErr)
+        }
+        await media.deleteOne()
+        deletedMedias++
+      }
+
+      await comm.deleteOne()
+      deletedComm++
+    }
+
+    console.log(
+      `[${now.toISOString()}] Deleted ${deletedComm} expired communications and ${deletedMedias} medias`
+    )
+
   } catch (err) {
     console.error('Error during cleanup:', err)
   } finally {
     cleanupTimer = setTimeout(startCleanupLoop, 60_000)
   }
 }
+
 
 const connectDB = async () => {
     try {

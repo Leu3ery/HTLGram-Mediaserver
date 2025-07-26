@@ -7,5 +7,6 @@ import { upload } from '../../common/multer/multer.main'
 const router = express.Router()
 
 router.post('/', JWTMiddleware, upload.single("file"), ErrorWrapper(mediaController.upload))
+// router.delete('/', ErrorWrapper(mediaController.delete))
 
 export default router

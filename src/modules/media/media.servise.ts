@@ -13,7 +13,11 @@ const mediaService = {
         user.storage += size
         await user.save()
         return await PayloadModel.create({communicationId: validated.communicationId, owner: userId, type: validated.type, mime, size, path})
-    }
+    },
+
+    // async delete(communicationId: Types.ObjectId) {
+    //     await CommunicationModel.
+    // }
 }
 
 export default mediaService
