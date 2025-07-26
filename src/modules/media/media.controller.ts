@@ -16,11 +16,11 @@ const mediaController = {
         res.status(200).json({data: payload})
     },
 
-    // async delete(req: Request, res: Response) {
-    //     const validated = validationWrapper(deleteMediaSchema, req.body)
-    //     await mediaService.delete(validated)
-    //     res.status(200)
-    // }
+    async delete(req: Request, res: Response) {
+        const validated = validationWrapper(deleteMediaSchema, req.body)
+        await mediaService.delete(validated)
+        res.status(200).end()
+    }
 }
 
 export default mediaController

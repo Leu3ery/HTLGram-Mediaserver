@@ -6,16 +6,15 @@ export interface uploadMediaSchemaI {
     type: PayloadTypesEnum
 }
 
-export const uploadMediaSchema = Joi.object({
-    communicationId: Joi.string().trim().min(3).max(64).required(),
+export const uploadMediaSchema = Joi.object<uploadMediaSchemaI>({
+    communicationId: Joi.string().length(24).hex().required(),
     type: Joi.string().trim().valid(...Object.values(PayloadTypesEnum)).required()
 })
 
 export interface deleteMediaSchemaI {
-    communicationId: string,
-    type: PayloadTypesEnum
+    mediaId: string
 }
 
-export const deleteMediaSchema = Joi.object({
-    communicationId: Joi.string().trim().min(3).max(64).required()
+export const deleteMediaSchema = Joi.object<deleteMediaSchemaI>({
+    mediaId: Joi.string().length(24).hex().required()
 })

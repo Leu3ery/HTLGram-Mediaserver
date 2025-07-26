@@ -1,8 +1,9 @@
 import { Types } from "mongoose"
-import { uploadMediaSchemaI } from "./media.validation"
+import { deleteMediaSchemaI, uploadMediaSchemaI } from "./media.validation"
 import { CommunicationModel, PayloadModel, userModel } from "./media.model"
 import { ErrorWithStatus } from "../../common/middleware/errorHandlerMiddleware"
 import { config } from "../../config/config"
+import deleteFile from "../../common/utils/utils.deleteFile"
 
 const mediaService = {
     async upload(validated: uploadMediaSchemaI, userId: Types.ObjectId, mime: string, size: number, path: string) {
@@ -15,9 +16,11 @@ const mediaService = {
         return await PayloadModel.create({communicationId: validated.communicationId, owner: userId, type: validated.type, mime, size, path})
     },
 
-    // async delete(communicationId: Types.ObjectId) {
-    //     await CommunicationModel.
-    // }
+    async delete(data: deleteMediaSchemaI) {
+        const media = await PayloadModel.findById(data.mediaId).exec()
+        if (!media) throw new ErrorWithStatus(404, "Media not found")
+        deleteFile(media.path)
+    }
 }
 
 export default mediaService
