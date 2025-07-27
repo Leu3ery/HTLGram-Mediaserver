@@ -12,9 +12,17 @@ export const uploadMediaSchema = Joi.object<uploadMediaSchemaI>({
 })
 
 export interface deleteMediaSchemaI {
-    mediaId: string
+    media: [string]
 }
 
 export const deleteMediaSchema = Joi.object<deleteMediaSchemaI>({
-    mediaId: Joi.string().length(24).hex().required()
+    media: Joi.array()
+    .items(
+        Joi.string()
+        .length(24)
+        .hex()
+        .required()
+    )
+    .min(1)
+    .required()
 })

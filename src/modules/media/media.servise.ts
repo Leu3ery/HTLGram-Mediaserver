@@ -17,9 +17,12 @@ const mediaService = {
     },
 
     async delete(data: deleteMediaSchemaI) {
-        const media = await PayloadModel.findById(data.mediaId).exec()
-        if (!media) throw new ErrorWithStatus(404, "Media not found")
-        deleteFile(media.path)
+        for (let mediaId of data.media) {
+            const media = await PayloadModel.findById(mediaId).exec()
+            if (media) {
+                deleteFile(media.path)
+            }
+        }
     }
 }
 
