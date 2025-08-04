@@ -3,7 +3,10 @@ import { HydratedDocument, Model, Schema } from "mongoose"
 export enum PayloadTypesEnum {
     PHOTOS  = "photo",
     VIDEOS  = "video",
-    FILE = "file"
+    FILE = "file",
+    AUDIO = "audio",
+    VIDEOMESSAGE = "video_message",
+    STICKER = "sticker",
 }
 
 export interface PayloadI extends Document {
