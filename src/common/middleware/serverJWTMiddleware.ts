@@ -8,7 +8,7 @@ const serverJWTMiddleware = (req: Request, res: Response, next: NextFunction) =>
         const token = req.headers.authorization?.split(" ")[1]
         if (!token) throw new ErrorWithStatus(401, "No authorization header find")
         jwt.verify(token, config.PUBLIC_KEY_BASE64, { algorithms: ['RS256'], audience: 'media-server', issuer: 'main-server' }, (err, decoded) => {
-            if (err) return res.status(403).json({ error: 'Invalid token', details: err.message });
+            if (err) throw new ErrorWithStatus(403, 'Invalid token')
         })
         next()
     } catch (e: unknown) {
