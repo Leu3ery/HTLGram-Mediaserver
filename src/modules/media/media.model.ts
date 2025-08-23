@@ -5,6 +5,11 @@ import { ErrorWithStatus } from "../../common/middleware/errorHandlerMiddleware"
 
 const PayloadSchema = new Schema<PayloadI>(
   {
+    spaceId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Space',
+      required: true
+    },
     communicationId: {
       type: Schema.Types.ObjectId,
       ref: 'Communication',
