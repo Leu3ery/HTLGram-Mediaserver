@@ -27,7 +27,7 @@ const mediaService = {
         if (user.storage > 1024 * 1024 * config.MAX_USER_STORAGE) throw new ErrorWithStatus(400, "Your storage is full")
         user.storage += size
         await user.save()
-        const media =  await PayloadModel.create({communicationId: validated.communicationId, owner: userId, type: validated.type, mime, size, path})
+        const media =  await PayloadModel.create({communicationId: validated.communicationId, spaceId: communication.spaceId, owner: userId, type: validated.type, mime, size, path})
         return {
             id: media._id.toString(),
             communicationId: media.communicationId.toString(),

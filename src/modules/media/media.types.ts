@@ -10,6 +10,7 @@ export enum PayloadTypesEnum {
 }
 
 export interface PayloadI extends Document {
+    spaceId: Schema.Types.ObjectId,
     communicationId: Schema.Types.ObjectId,
     owner: Schema.Types.ObjectId,
     type: PayloadTypesEnum,
