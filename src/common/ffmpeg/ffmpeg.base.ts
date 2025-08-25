@@ -58,3 +58,48 @@ export async function ensureMp4(
   const stat = await fs.stat(outputPath)
   return { finalPath: outputPath, finalMime: 'video/mp4', finalSize: stat.size }
 }
+
+export async function ensureM4A(inputPath: string): Promise<{ finalPath: string; finalMime: string; finalSize: number }> {
+  const meta = await new Promise<ffmpegLib.FfprobeData>((resolve, reject) => {
+    ffmpegLib.ffprobe(inputPath, (err, data) => (err ? reject(err) : resolve(data)))
+  })
+
+  const format = (meta.format.format_name || '').toLowerCase()
+  const a = meta.streams.find(s => s.codec_type === 'audio')
+  const hasVideo = meta.streams.some(s => s.codec_type === 'video')
+
+  // Якщо раптом прилетіло відео — не чіпаємо тут (не цей хелпер)
+  if (hasVideo) {
+    const stat = await fs.stat(inputPath)
+    return { finalPath: inputPath, finalMime: 'video/mp4', finalSize: stat.size }
+  }
+
+  const mp4ish = format.includes('mp4') || format.includes('m4a') || format.includes('mov')
+  const isAac  = !!a && a.codec_name === 'aac'
+
+  if (mp4ish && isAac) {
+    const stat = await fs.stat(inputPath)
+    return { finalPath: inputPath, finalMime: 'audio/mp4', finalSize: stat.size }
+  }
+
+  const dir = nodePath.dirname(inputPath)
+  const base = nodePath.parse(inputPath).name
+  const outputPath = nodePath.join(dir, `${base}.m4a`)
+
+  await new Promise<void>((resolve, reject) => {
+    ffmpegLib(inputPath)
+      .noVideo()              // ключовий момент: жодного відео
+      .audioCodec('aac')
+      .audioBitrate('128k')
+      .outputOptions(['-movflags +faststart'])
+      .on('error', reject)
+      .on('end', () => {
+        deleteFile(nodePath.basename(inputPath)) // прибираємо оригінал
+        resolve()
+      })
+      .save(outputPath)
+  })
+
+  const stat = await fs.stat(outputPath)
+  return { finalPath: outputPath, finalMime: 'audio/mp4', finalSize: stat.size }
+}

@@ -6,7 +6,7 @@ import { config } from "../../config/config"
 import deleteFile from "../../common/utils/utils.deleteFile"
 import nodePath from 'node:path';
 import { publicDir } from "../../app"
-import { ensureMp4 } from "../../common/ffmpeg/ffmpeg.base"
+import { ensureM4A, ensureMp4 } from "../../common/ffmpeg/ffmpeg.base"
 
 export type MediaResponse = {
     id: string,
@@ -31,8 +31,15 @@ const mediaService = {
         
         const inputPath = nodePath.join(publicDir, path);
 
-        // NEW: перевірити/перекодувати за потреби
-        const { finalPath, finalMime, finalSize } = await ensureMp4(inputPath);
+        let finalPath: string
+        let finalMime: string
+        let finalSize: number
+
+        if (mime.startsWith('audio/')) {
+            ({ finalPath, finalMime, finalSize } = await ensureM4A(inputPath))
+        } else {
+            ({ finalPath, finalMime, finalSize } = await ensureMp4(inputPath))
+        }
         
         user.storage += finalSize
         await user.save()
