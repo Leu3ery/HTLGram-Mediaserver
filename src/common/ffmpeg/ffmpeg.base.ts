@@ -8,11 +8,30 @@ import deleteFile from '../../common/utils/utils.deleteFile';
 ffmpegLib.setFfmpegPath(ffmpegPath.path);
 ffmpegLib.setFfprobePath(ffprobePath.path);
 
-export async function hasVideoStream(inputPath: string): Promise<boolean> {
+export async function isRealVideo(inputPath: string): Promise<boolean> {
   const meta = await new Promise<ffmpegLib.FfprobeData>((resolve, reject) => {
     ffmpegLib.ffprobe(inputPath, (err, data) => (err ? reject(err) : resolve(data)));
   });
-  return meta.streams.some(s => s.codec_type === 'video');
+
+  const v = meta.streams.filter(s => s.codec_type === 'video');
+
+  // Немає відеопотоку => точно не відео
+  if (v.length === 0) return false;
+
+  // Є відеотраки, але перевіримо "осмисленість"
+  // інколи iOS кладе ширину/висоту 0 або 1 (placeholder), або кадрову частоту 0/0
+  for (const s of v) {
+    const w = Number(s.width || 0);
+    const h = Number(s.height || 0);
+    const avg = String(s.avg_frame_rate || '0/0');
+    const hasSize = w >= 8 && h >= 8;               // мініпоріг "не placeholder"
+    const hasFps  = avg !== '0/0' && avg !== '0';   // є кадри/частота
+
+    if (hasSize && hasFps) return true; // бодай один осмислений відеопотік = справжнє відео
+  }
+
+  // якщо всі відеотреки виглядають як placeholder — це аудіо
+  return false;
 }
 
 // Мінімальний хелпер: повертає { finalPath, finalMime, finalSize }
