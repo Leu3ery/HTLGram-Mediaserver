@@ -85,47 +85,60 @@ export async function ensureMp4(
   return { finalPath: outputPath, finalMime: 'video/mp4', finalSize: stat.size }
 }
 
-export async function ensureM4A(inputPath: string): Promise<{ finalPath: string; finalMime: string; finalSize: number }> {
+export async function ensureM4A(
+  inputPath: string
+): Promise<{ finalPath: string; finalMime: string; finalSize: number }> {
   const meta = await new Promise<ffmpegLib.FfprobeData>((resolve, reject) => {
-    ffmpegLib.ffprobe(inputPath, (err, data) => (err ? reject(err) : resolve(data)))
-  })
+    ffmpegLib.ffprobe(inputPath, (err, data) => (err ? reject(err) : resolve(data)));
+  });
 
-  const format = (meta.format.format_name || '').toLowerCase()
-  const a = meta.streams.find(s => s.codec_type === 'audio')
-  const hasVideo = meta.streams.some(s => s.codec_type === 'video')
+  const format = (meta.format.format_name || '').toLowerCase(); // напр. "mov,mp4,m4a,3gp,3g2,mj2"
+  const a = meta.streams.find(s => s.codec_type === 'audio');
+  const hasVideo = meta.streams.some(s => s.codec_type === 'video');
 
-  // Якщо раптом прилетіло відео — не чіпаємо тут (не цей хелпер)
+  // Якщо це відео — не чіпаємо тут (обробляється ensureMp4 зовні)
   if (hasVideo) {
-    const stat = await fs.stat(inputPath)
-    return { finalPath: inputPath, finalMime: 'video/mp4', finalSize: stat.size }
+    const stat = await fs.stat(inputPath);
+    return { finalPath: inputPath, finalMime: 'video/mp4', finalSize: stat.size };
   }
 
-  const mp4ish = format.includes('mp4') || format.includes('m4a') || format.includes('mov')
-  const isAac  = !!a && a.codec_name === 'aac'
+  const isMp4ish = format.includes('mp4') || format.includes('m4a') || format.includes('mov');
+  const isAac = !!a && (a.codec_name === 'aac' || (a.codec_tag_string || '').toLowerCase().includes('mp4a'));
 
-  if (mp4ish && isAac) {
-    const stat = await fs.stat(inputPath)
-    return { finalPath: inputPath, finalMime: 'audio/mp4', finalSize: stat.size }
+  const dir = nodePath.dirname(inputPath);
+  const parsed = nodePath.parse(inputPath);
+  const baseName = parsed.name;
+
+  // Якщо вже .m4a — нічого не робимо
+  if (parsed.ext.toLowerCase() === '.m4a') {
+    const stat = await fs.stat(inputPath);
+    return { finalPath: inputPath, finalMime: 'audio/mp4', finalSize: stat.size };
   }
 
-  const dir = nodePath.dirname(inputPath)
-  const base = nodePath.parse(inputPath).name
-  const outputPath = nodePath.join(dir, `${base}.m4a`)
+  // Всі інші аудіо-кейси приводимо до .m4a
+  const outputPath = nodePath.join(dir, `${baseName}.m4a`);
 
   await new Promise<void>((resolve, reject) => {
-    ffmpegLib(inputPath)
-      .noVideo()              // ключовий момент: жодного відео
-      .audioCodec('aac')
-      .audioBitrate('128k')
-      .outputOptions(['-movflags +faststart'])
+    const cmd = ffmpegLib(inputPath).noVideo().outputOptions(['-movflags +faststart']);
+
+    if (isMp4ish && isAac) {
+      // 🔹 Вже AAC у mp4/mov — робимо швидкий ремультиплекс, без перекодування
+      cmd.audioCodec('copy');
+    } else {
+      // 🔹 Інакше перекодуємо в AAC
+      cmd.audioCodec('aac').audioBitrate('128k');
+    }
+
+    cmd
       .on('error', reject)
       .on('end', () => {
-        deleteFile(nodePath.basename(inputPath)) // прибираємо оригінал
-        resolve()
+        // видаляємо оригінал (твій хелпер приймає filename)
+        deleteFile(nodePath.basename(inputPath));
+        resolve();
       })
-      .save(outputPath)
-  })
+      .save(outputPath);
+  });
 
-  const stat = await fs.stat(outputPath)
-  return { finalPath: outputPath, finalMime: 'audio/mp4', finalSize: stat.size }
+  const stat = await fs.stat(outputPath);
+  return { finalPath: outputPath, finalMime: 'audio/mp4', finalSize: stat.size };
 }

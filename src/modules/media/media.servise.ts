@@ -35,7 +35,8 @@ const mediaService = {
         let finalMime: string
         let finalSize: number
 
-        if (await isRealVideo(inputPath)) console.log("this is video")
+        console.log("test")
+        if (await isRealVideo(inputPath)) {console.log("this is video")}
 
         if (await isRealVideo(inputPath)) {
             ({ finalPath, finalMime, finalSize } = await ensureMp4(inputPath));
