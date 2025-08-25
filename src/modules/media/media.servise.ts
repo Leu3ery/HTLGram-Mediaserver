@@ -4,6 +4,9 @@ import { CommunicationModel, PayloadModel, userModel } from "./media.model"
 import { ErrorWithStatus } from "../../common/middleware/errorHandlerMiddleware"
 import { config } from "../../config/config"
 import deleteFile from "../../common/utils/utils.deleteFile"
+import nodePath from 'node:path';
+import { publicDir } from "../../app"
+import { ensureMp4 } from "../../common/ffmpeg/ffmpeg.base"
 
 export type MediaResponse = {
     id: string,
@@ -22,12 +25,29 @@ const mediaService = {
         const communication = await CommunicationModel.findOneOrError({_id: validated.communicationId, senderId: userId})
         if (communication.isConfirmed) throw new ErrorWithStatus(400, "You cann't add files to closed communication")
         const mediaCount = await PayloadModel.countDocuments({communicationId: validated.communicationId}).exec()
-        if (mediaCount > 10) throw new ErrorWithStatus(400, 'Cannot add more than 10 media items to this communication')
+        if (mediaCount >= 10) throw new ErrorWithStatus(400, 'Cannot add more than 10 media items to this communication')
         const user = await userModel.findOneOrError({_id: userId})
         if (user.storage > 1024 * 1024 * config.MAX_USER_STORAGE) throw new ErrorWithStatus(400, "Your storage is full")
-        user.storage += size
+        
+        const inputPath = nodePath.join(publicDir, path);
+
+        // NEW: перевірити/перекодувати за потреби
+        const { finalPath, finalMime, finalSize } = await ensureMp4(inputPath);
+        
+        user.storage += finalSize
         await user.save()
-        const media =  await PayloadModel.create({communicationId: validated.communicationId, spaceId: communication.spaceId, owner: userId, type: validated.type, mime, size, path})
+
+        const storedFilename = nodePath.basename(finalPath);
+
+        const media =  await PayloadModel.create({
+            communicationId: validated.communicationId,
+            spaceId: communication.spaceId,
+            owner: userId,
+            type: validated.type,
+            mime: finalMime,     // було: mime
+            size: finalSize,     // було: size
+            path: storedFilename // було: path (оригінал)
+        })
         return {
             id: media._id.toString(),
             communicationId: media.communicationId.toString(),
