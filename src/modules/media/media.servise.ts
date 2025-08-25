@@ -4,9 +4,6 @@ import { CommunicationModel, PayloadModel, userModel } from "./media.model"
 import { ErrorWithStatus } from "../../common/middleware/errorHandlerMiddleware"
 import { config } from "../../config/config"
 import deleteFile from "../../common/utils/utils.deleteFile"
-import nodePath from 'node:path';
-import { publicDir } from "../../app"
-import { ensureM4A, ensureMp4, isRealVideo } from "../../common/ffmpeg/ffmpeg.base"
 
 export type MediaResponse = {
     id: string,
@@ -25,39 +22,12 @@ const mediaService = {
         const communication = await CommunicationModel.findOneOrError({_id: validated.communicationId, senderId: userId})
         if (communication.isConfirmed) throw new ErrorWithStatus(400, "You cann't add files to closed communication")
         const mediaCount = await PayloadModel.countDocuments({communicationId: validated.communicationId}).exec()
-        if (mediaCount >= 10) throw new ErrorWithStatus(400, 'Cannot add more than 10 media items to this communication')
+        if (mediaCount > 10) throw new ErrorWithStatus(400, 'Cannot add more than 10 media items to this communication')
         const user = await userModel.findOneOrError({_id: userId})
         if (user.storage > 1024 * 1024 * config.MAX_USER_STORAGE) throw new ErrorWithStatus(400, "Your storage is full")
-        
-        const inputPath = nodePath.join(publicDir, path);
-
-        let finalPath: string
-        let finalMime: string
-        let finalSize: number
-
-        console.log("test")
-        if (await isRealVideo(inputPath)) {console.log("this is video")}
-
-        if (await isRealVideo(inputPath)) {
-            ({ finalPath, finalMime, finalSize } = await ensureMp4(inputPath));
-        } else {
-            ({ finalPath, finalMime, finalSize } = await ensureM4A(inputPath));
-        }
-        
-        user.storage += finalSize
+        user.storage += size
         await user.save()
-
-        const storedFilename = nodePath.basename(finalPath);
-
-        const media =  await PayloadModel.create({
-            communicationId: validated.communicationId,
-            spaceId: communication.spaceId,
-            owner: userId,
-            type: validated.type,
-            mime: finalMime,     // було: mime
-            size: finalSize,     // було: size
-            path: storedFilename // було: path (оригінал)
-        })
+        const media =  await PayloadModel.create({communicationId: validated.communicationId, spaceId: communication.spaceId, owner: userId, type: validated.type, mime, size, path})
         return {
             id: media._id.toString(),
             communicationId: media.communicationId.toString(),
