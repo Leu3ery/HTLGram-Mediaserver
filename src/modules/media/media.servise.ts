@@ -6,7 +6,7 @@ import { config } from "../../config/config"
 import deleteFile from "../../common/utils/utils.deleteFile"
 import nodePath from 'node:path';
 import { publicDir } from "../../app"
-import { ensureM4A, ensureMp4 } from "../../common/ffmpeg/ffmpeg.base"
+import { ensureM4A, ensureMp4, hasVideoStream } from "../../common/ffmpeg/ffmpeg.base"
 
 export type MediaResponse = {
     id: string,
@@ -35,10 +35,10 @@ const mediaService = {
         let finalMime: string
         let finalSize: number
 
-        if (mime.startsWith('audio/')) {
-            ({ finalPath, finalMime, finalSize } = await ensureM4A(inputPath))
+        if (await hasVideoStream(inputPath)) {
+            ({ finalPath, finalMime, finalSize } = await ensureMp4(inputPath));
         } else {
-            ({ finalPath, finalMime, finalSize } = await ensureMp4(inputPath))
+            ({ finalPath, finalMime, finalSize } = await ensureM4A(inputPath));
         }
         
         user.storage += finalSize

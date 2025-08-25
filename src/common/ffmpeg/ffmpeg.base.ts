@@ -8,6 +8,13 @@ import deleteFile from '../../common/utils/utils.deleteFile';
 ffmpegLib.setFfmpegPath(ffmpegPath.path);
 ffmpegLib.setFfprobePath(ffprobePath.path);
 
+export async function hasVideoStream(inputPath: string): Promise<boolean> {
+  const meta = await new Promise<ffmpegLib.FfprobeData>((resolve, reject) => {
+    ffmpegLib.ffprobe(inputPath, (err, data) => (err ? reject(err) : resolve(data)));
+  });
+  return meta.streams.some(s => s.codec_type === 'video');
+}
+
 // Мінімальний хелпер: повертає { finalPath, finalMime, finalSize }
 export async function ensureMp4(
   inputPath: string
