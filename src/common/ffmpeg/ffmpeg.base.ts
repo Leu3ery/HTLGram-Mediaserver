@@ -119,25 +119,29 @@ export async function ensureM4A(
   const outputPath = nodePath.join(dir, `${baseName}.m4a`);
 
   await new Promise<void>((resolve, reject) => {
-    const cmd = ffmpegLib(inputPath).noVideo().outputOptions(['-movflags +faststart']);
-
-    if (isMp4ish && isAac) {
-      // 🔹 Вже AAC у mp4/mov — робимо швидкий ремультиплекс, без перекодування
-      cmd.audioCodec('copy');
-    } else {
-      // 🔹 Інакше перекодуємо в AAC
-      cmd.audioCodec('aac').audioBitrate('128k');
-    }
-
-    cmd
-      .on('error', reject)
-      .on('end', () => {
-        // видаляємо оригінал (твій хелпер приймає filename)
-        deleteFile(nodePath.basename(inputPath));
-        resolve();
-      })
-      .save(outputPath);
-  });
+  ffmpegLib(inputPath)
+    .noVideo()
+    .audioCodec('aac')
+    .audioBitrate('128k')
+    .audioFrequency(48000)              // частота дискретизації
+    .audioChannels(2)                   // стерео (можеш зробити 1)
+    .outputOptions([
+      '-movflags +faststart',           // moov на початок для прогресивного стріму
+      '-fflags +genpts',                // згенерувати PTS якщо бракує
+      '-avoid_negative_ts make_zero',   // прибрати від’ємні таймстампи
+      '-muxpreload 0',                  // без прелоаду
+      '-muxdelay 0',                    // без затримки мультиплексера
+      // вирівнюємо аудіо-таймлайн, щоб не було «урізаної» довжини
+      '-af', 'aresample=async=1:first_pts=0'
+    ])
+    .format('mp4')                      // контейнер mp4 (розширення .m4a)
+    .on('error', reject)
+    .on('end', () => {
+      deleteFile(nodePath.basename(inputPath))
+      resolve()
+    })
+    .save(outputPath)
+})
 
   const stat = await fs.stat(outputPath);
   return { finalPath: outputPath, finalMime: 'audio/mp4', finalSize: stat.size };
