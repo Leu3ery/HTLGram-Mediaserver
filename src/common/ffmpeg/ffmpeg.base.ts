@@ -92,56 +92,67 @@ export async function ensureM4A(
     ffmpegLib.ffprobe(inputPath, (err, data) => (err ? reject(err) : resolve(data)));
   });
 
-  const format = (meta.format.format_name || '').toLowerCase(); // напр. "mov,mp4,m4a,3gp,3g2,mj2"
-  const a = meta.streams.find(s => s.codec_type === 'audio');
+  // якщо є відеопотік — нехай цим займається ensureMp4 (зовні)
   const hasVideo = meta.streams.some(s => s.codec_type === 'video');
-
-  // Якщо це відео — не чіпаємо тут (обробляється ensureMp4 зовні)
   if (hasVideo) {
     const stat = await fs.stat(inputPath);
     return { finalPath: inputPath, finalMime: 'video/mp4', finalSize: stat.size };
   }
 
-  const isMp4ish = format.includes('mp4') || format.includes('m4a') || format.includes('mov');
-  const isAac = !!a && (a.codec_name === 'aac' || (a.codec_tag_string || '').toLowerCase().includes('mp4a'));
+  // 🔴 ВИБИРАЄМО НАЙДОВШИЙ АУДІОТРЕК — ключ до «1 сек»
+  const audioStreams = meta.streams
+    .map((s, idx) => ({ s, idx }))
+    .filter(x => x.s.codec_type === 'audio');
 
-  const dir = nodePath.dirname(inputPath);
-  const parsed = nodePath.parse(inputPath);
-  const baseName = parsed.name;
-
-  // Якщо вже .m4a — нічого не робимо
-  if (parsed.ext.toLowerCase() === '.m4a') {
+  if (audioStreams.length === 0) {
+    // немає аудіо — повертай як є (або кинь помилку на свій розсуд)
     const stat = await fs.stat(inputPath);
     return { finalPath: inputPath, finalMime: 'audio/mp4', finalSize: stat.size };
   }
 
-  // Всі інші аудіо-кейси приводимо до .m4a
-  const outputPath = nodePath.join(dir, `${baseName}.m4a`);
+  // duration у стрімів може бути рядком; конвертимо й беремо максимум
+  const best = audioStreams.reduce((best, cur) => {
+    const dBest = Number(best.s.duration ?? best.s.tags?.DURATION ?? 0) || 0;
+    const dCur  = Number(cur.s.duration  ?? cur.s.tags?.DURATION  ?? 0) || 0;
+    return dCur > dBest ? cur : best;
+  }, audioStreams[0]);
+  const bestAudioIndex = best.idx; // це індекс у "0:a:<index>"
+
+  const dir = nodePath.dirname(inputPath);
+  const parsed = nodePath.parse(inputPath);
+  const outputPath = nodePath.join(dir, `${parsed.name}.m4a`);
 
   await new Promise<void>((resolve, reject) => {
-  ffmpegLib(inputPath)
-    .noVideo()
-    .audioCodec('aac')
-    .audioBitrate('128k')
-    .audioFrequency(48000)              // частота дискретизації
-    .audioChannels(2)                   // стерео (можеш зробити 1)
-    .outputOptions([
-      '-movflags +faststart',           // moov на початок для прогресивного стріму
-      '-fflags +genpts',                // згенерувати PTS якщо бракує
-      '-avoid_negative_ts make_zero',   // прибрати від’ємні таймстампи
-      '-muxpreload 0',                  // без прелоаду
-      '-muxdelay 0',                    // без затримки мультиплексера
-      // вирівнюємо аудіо-таймлайн, щоб не було «урізаної» довжини
-      '-af', 'aresample=async=1:first_pts=0'
-    ])
-    .format('mp4')                      // контейнер mp4 (розширення .m4a)
-    .on('error', reject)
-    .on('end', () => {
-      deleteFile(nodePath.basename(inputPath))
-      resolve()
-    })
-    .save(outputPath)
-})
+    const cmd = ffmpegLib(inputPath)
+      // 🔹 беремо САМЕ вибраний аудіопотік
+      .outputOptions(['-map', `0:a:${bestAudioIndex}`])
+      .noVideo()
+      .audioCodec('aac')            // саме перекодування, не copy
+      .audioBitrate('128k')
+      .audioFrequency(48000)
+      .audioChannels(1)             // mono для voice; можна 2
+      .inputOptions([
+        // iPhone edit lists можуть ламати старт/довжину:
+        '-ignore_editlist', '1'
+      ])
+      .outputOptions([
+        '-movflags +faststart',
+        '-fflags +genpts',
+        '-avoid_negative_ts', 'make_zero',
+        '-muxpreload', '0',
+        '-muxdelay', '0',
+        // Вирівнюємо таймлайн, щоб не було «1 сек»
+        '-af', 'aresample=async=1:first_pts=0:min_hard_comp=0.100'
+      ])
+      .format('mp4')
+      .on('error', reject)
+      .on('end', () => {
+        deleteFile(nodePath.basename(inputPath));
+        resolve();
+      });
+
+    cmd.save(outputPath);
+  });
 
   const stat = await fs.stat(outputPath);
   return { finalPath: outputPath, finalMime: 'audio/mp4', finalSize: stat.size };
