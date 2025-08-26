@@ -73,9 +73,9 @@ const mediaService = {
       spaceId: communication.spaceId,
       owner: userId,
       type: validated.type,
-      mime: mime, // було: mime
-      size: size, // було: size
-      path: storedFilename, // було: path (оригінал)
+      mime: mime, 
+      size: size, 
+      path: storedFilename, 
     });
     return {
       id: media._id.toString(),

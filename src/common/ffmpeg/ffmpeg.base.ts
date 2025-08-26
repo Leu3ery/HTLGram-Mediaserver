@@ -8,7 +8,6 @@ import deleteFile from '../../common/utils/utils.deleteFile';
 ffmpegLib.setFfmpegPath(ffmpegPath.path);
 ffmpegLib.setFfprobePath(ffprobePath.path);
 
-// Мінімальний хелпер: повертає { finalPath, finalMime, finalSize }
 export async function ensureMp4(
   inputPath: string
 ): Promise<{ finalPath: string; finalMime: string; finalSize: number }> {
@@ -24,7 +23,6 @@ export async function ensureMp4(
   const h264 = !!v && (v.codec_name === 'h264' || (v.codec_tag_string || '').toLowerCase().includes('avc1'))
   const aac = !a || a.codec_name === 'aac'
 
-  // Якщо файл уже сумісний — повертаємо як є
   if (mp4ish && h264 && aac) {
     const stat = await fs.stat(inputPath)
     return { finalPath: inputPath, finalMime: 'video/mp4', finalSize: stat.size }
@@ -46,7 +44,6 @@ export async function ensureMp4(
       ])
       .on('error', reject)
       .on('end', () => {
-        // Використовуємо твій хелпер, передаючи тільки ім’я оригінального файлу
         const originalFilename = nodePath.basename(inputPath)
         deleteFile(originalFilename)
 
