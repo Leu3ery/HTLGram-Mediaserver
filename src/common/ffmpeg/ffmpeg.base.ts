@@ -48,7 +48,7 @@ export async function ensureMp4(
       .on('end', () => {
         // Використовуємо твій хелпер, передаючи тільки ім’я оригінального файлу
         const originalFilename = nodePath.basename(inputPath)
-        // deleteFile(originalFilename)
+        deleteFile(originalFilename)
 
         resolve()
       })

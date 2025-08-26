@@ -51,15 +51,18 @@ const mediaService = {
       throw new ErrorWithStatus(400, "Your storage is full");
 
     let storedFilename = path;
+    const inputPath = nodePath.join(publicDir, path);
 
-    if (validated.type === "audio" || validated.type === "video_message") {
-      const inputPath = nodePath.join(publicDir, path);
+    if (validated.type === "audio") {
       const renamedPath = inputPath.replace(/\.[^/.]+$/, "") + ".mp4";
       await fs.rename(inputPath, renamedPath);
       storedFilename = nodePath.basename(renamedPath);
     }
     if (validated.type === "video_message") {
-      mime = "video/mp4";
+      const { finalPath, finalMime, finalSize } = await ensureMp4(inputPath);
+      storedFilename = nodePath.basename(finalPath);
+      mime = finalMime
+      size = finalSize
     }
 
     user.storage += size;
