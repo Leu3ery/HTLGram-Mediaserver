@@ -7,6 +7,7 @@ import deleteFile from "../../common/utils/utils.deleteFile"
 import nodePath from 'node:path';
 import { publicDir } from "../../app"
 import { ensureMp4 } from "../../common/ffmpeg/ffmpeg.base"
+import fs from 'node:fs/promises';
 
 export type MediaResponse = {
     id: string,
@@ -29,23 +30,26 @@ const mediaService = {
         const user = await userModel.findOneOrError({_id: userId})
         if (user.storage > 1024 * 1024 * config.MAX_USER_STORAGE) throw new ErrorWithStatus(400, "Your storage is full")
         
-        const inputPath = nodePath.join(publicDir, path);
-
-        // NEW: перевірити/перекодувати за потреби
-        const { finalPath, finalMime, finalSize } = await ensureMp4(inputPath);
+        let storedFilename = nodePath.join(publicDir, path)
         
-        user.storage += finalSize
+        if (validated.type === "audio") {
+            const inputPath = nodePath.join(publicDir, path);
+            const renamedPath = inputPath.replace(/\.[^/.]+$/, '') + '.mp4';
+            await fs.rename(inputPath, renamedPath);
+            storedFilename = nodePath.basename(renamedPath);
+        }
+        
+        
+        user.storage += size
         await user.save()
-
-        const storedFilename = nodePath.basename(finalPath);
 
         const media =  await PayloadModel.create({
             communicationId: validated.communicationId,
             spaceId: communication.spaceId,
             owner: userId,
             type: validated.type,
-            mime: finalMime,     // було: mime
-            size: finalSize,     // було: size
+            mime: mime,     // було: mime
+            size: size,     // було: size
             path: storedFilename // було: path (оригінал)
         })
         return {
