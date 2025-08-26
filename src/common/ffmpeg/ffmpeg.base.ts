@@ -36,7 +36,7 @@ export async function ensureMp4(
 
   await new Promise<void>((resolve, reject) => {
     ffmpegLib(inputPath)
-    //   .videoCodec('libx264')
+      .videoCodec('libx264')
       .audioCodec('aac')
       .outputOptions([
         '-movflags +faststart',
@@ -48,7 +48,7 @@ export async function ensureMp4(
       .on('end', () => {
         // Використовуємо твій хелпер, передаючи тільки ім’я оригінального файлу
         const originalFilename = nodePath.basename(inputPath)
-        deleteFile(originalFilename)
+        // deleteFile(originalFilename)
 
         resolve()
       })
