@@ -2,6 +2,7 @@ import express from "express"
 import errorHandler from "./common/middleware/errorHandlerMiddleware"
 import notFound from "./common/middleware/notFoundMiddleware"
 import rateLimit from 'express-rate-limit'
+import { config } from "./config/config"
 import path from "path"
 import fs from 'fs'
 import cors from 'cors'
@@ -23,9 +24,11 @@ if (!fs.existsSync(publicDir)) {
   console.log(`Created missing directory: ${publicDir}`);
 }
 
+app.use(cors({
+  origin: config.DOMEN,
+}))
 app.use('/public', express.static(publicDir))
 app.use(limiter)
-app.use(cors())
 app.use(express.json())
 
 
